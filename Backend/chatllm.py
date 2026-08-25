@@ -1,16 +1,22 @@
 from pydantic import BaseModel
-from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma # FAISS ki jagah Chroma import kiya hai
 
 class ChatResponse(BaseModel):
     explanation: str
 
+# LLM & EMBEDDINGS SETUP (Optimized for speed)
 
-llm = ChatOllama(model="llama3.2:latest", temperature=0.0, num_predict=250, num_ctx=4096, keep_alive="30m")
+llm = ChatOllama(model="llama3.2:latest", temperature=0.0, num_predict=250, num_ctx=4096, keep_alive="15m")
+embeddings = OllamaEmbeddings(model="qwen3-embedding:0.6b") 
 
-# ============================================================
+last_seen_code = ""
+vector_store = None # Vector database (ChromaDB)
+
 # DETAILED SYSTEM PROMPT
-# ============================================================
+
 BASE_INSTRUCTIONS = """
 You are an AI Code Reviewer and Security Assistant for IT professionals.
 
@@ -85,15 +91,48 @@ No code fences.
 Be concise and directly answer the user's question.
 """
 
+def process_large_code(code_text):
+    global vector_store
+    
+    # Purana ChromaDB collection delete karein taaki RAM free rahe (Memory Optimization)
+    if vector_store is not None:
+        try:
+            vector_store.delete_collection()
+        except Exception:
+            pass
 
-def Code_ChatBot_No_RAG(incoming_query, incoming_code):
-    if not incoming_code:
+    # Code ko 1000 characters ke chunks me split karta hai (Speed ke liye)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    chunks = text_splitter.split_text(code_text)
+    
+    # Chunks ko ChromaDB (In-Memory) me store karta hai
+    vector_store = Chroma.from_texts(
+        texts=chunks, 
+        embedding=embeddings
+    )
+
+def Code_ChatBot(incoming_query, incoming_code):
+    global last_seen_code, vector_store
+
+    # Agar naya code paste hua hai, tabhi process karega (Time bachega)
+    if incoming_code and incoming_code != last_seen_code:
+        last_seen_code = incoming_code
+        process_large_code(incoming_code)
+
+    if not vector_store and incoming_code:
+        # Fallback in case vector_store isn't initialized yet
+        process_large_code(incoming_code)
+    elif not vector_store:
         return {"explanation": "Please provide code first."}
 
-    # Poora ka poora code direct context me bhej rahe hain
+    # User ke question se related top 3 code chunks nikalega
+    relevant_docs = vector_store.similarity_search(incoming_query, k=3)
+    relevant_code = "\n".join([doc.page_content for doc in relevant_docs])
+
+    # Instruction ko exact format me bhejna jo prompt demand kar raha hai
     system_instruction = (
         f"{BASE_INSTRUCTIONS}\n\n"
-        f"USER_CODE_CONTEXT:\n<USER_CODE>\n{incoming_code}\n</USER_CODE>"
+        f"USER_CODE_CONTEXT:\n<USER_CODE>\n{relevant_code}\n</USER_CODE>"
     )
     
     messages = [
@@ -102,11 +141,14 @@ def Code_ChatBot_No_RAG(incoming_query, incoming_code):
     ]
 
     try:
-        print("Analyzing code without RAG...")
+        print("Analyzing code for chat ...")
         response = llm.invoke(messages)
         text = (response.content or "").strip()
-        print("Message Send completed.")
+        print("Message Send complited.")
         return ChatResponse(explanation=text).model_dump()
     except Exception as e:
         print(f"Error: {e}")
         return {"explanation": "An error occurred while analyzing the code."}
+
+
+
