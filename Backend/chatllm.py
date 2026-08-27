@@ -17,7 +17,7 @@ class ChatResponse(BaseModel):
 
 primary_llm = ChatOpenAI(
     model="google/gemma-4-26b-a4b-it:freeze-2024-06-11", 
-    api_key= os.getenv("API_KEY"),
+    api_key= os.getenv("OPENAI_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
     temperature=0.0,
     max_tokens=250
