@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Code Reviewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#04070d;
+    --bg-panel:#0a0f1c;
+    --bg-panel-alt:#0d1526;
+    --bg-editor:#080d18;
+    --line:rgba(120,150,190,0.14);
+    --line-bright:rgba(93,250,196,0.35);
+    --teal:#2fe3ac;
+    --teal-bright:#7dffd6;
+    --cyan:#3fd1ff;
+    --blue:#4c7cf0;
+    --amber:#ffb648;
+    --danger:#ff5470;
+    --text:#e9eefb;
+    --text-dim:#8b98b4;
+    --text-faint:#5a6685;
+    --radius:14px;
+    --font-ui:'Space Grotesk',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg-deep);
+    color:var(--text);
+    font-family:var(--font-ui);
+    overflow-x:hidden;
+    min-height:100vh;
+    position:relative;
+  }
+
+  /* ================= EXTREME ANIMATED BACKGROUND ================= */
+  #bg-canvas{
+    position:fixed; inset:0; width:100%; height:100%;
+    z-index:0; display:block;
+  }
+  .aurora-field{
+    position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+  }
+.aurora-blob{
+    position:absolute; border-radius:50%;
+    /* GPU KILLER: filter:blur(90px) hata diya gaya hai */
+    opacity:0.55;
+    mix-blend-mode:screen;
+    will-change: transform; /* GPU ko efficiently use karne ke liye hint */
+  }
+  .blob-1{
+    width:620px; height:620px; left:-10%; top:-15%;
+    background:radial-gradient(circle at 30% 30%, rgba(47,227,172,0.55), transparent 70%);
+    animation: driftA 22s ease-in-out infinite;
+  }
+  .blob-2{
+    width:700px; height:700px; right:-15%; top:10%;
+    background:radial-gradient(circle at 60% 40%, rgba(63,209,255,0.45), transparent 70%);
+    animation: driftB 26s ease-in-out infinite;
+  }
+  .blob-3{
+    width:520px; height:520px; left:20%; bottom:-20%;
+    background:radial-gradient(circle at 50% 50%, rgba(76,124,240,0.4), transparent 70%);
+    animation: driftC 30s ease-in-out infinite;
+  }
+  .blob-4{
+    width:380px; height:380px; right:10%; bottom:-10%;
+    background:radial-gradient(circle at 50% 50%, rgba(255,84,112,0.22), transparent 70%);
+    animation: driftA 18s ease-in-out infinite reverse;
+  }
+@keyframes driftA{
+    0%,100%{ transform:translate3d(0,0,0) scale(1); }
+    33%{ transform:translate3d(60px,40px,0) scale(1.15); }
+    66%{ transform:translate3d(-30px,60px,0) scale(0.9); }
+  }
+  @keyframes driftB{
+    0%,100%{ transform:translate3d(0,0,0) scale(1); }
+    50%{ transform:translate3d(-80px,50px,0) scale(1.2); }
+  }
+  @keyframes driftC{
+    0%,100%{ transform:translate3d(0,0,0) scale(1); }
+    40%{ transform:translate3d(50px,-40px,0) scale(1.1); }
+    75%{ transform:translate3d(-60px,-10px,0) scale(0.95); }
+  }
+
+  .grid-plane{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 20%, #000 30%, transparent 80%);
+    mask-image:radial-gradient(ellipse 90% 70% at 50% 20%, #000 30%, transparent 80%);
+    opacity:0.5;
+    animation: gridPan 40s linear infinite;
+  }
+  @keyframes gridPan{
+    0%{ background-position:0 0, 0 0; }
+    100%{ background-position:400px 0, 0 400px; }
+  }
+
+  .scanline{
+    position:fixed; left:0; right:0; height:140px; z-index:0; pointer-events:none;
+    background:linear-gradient(180deg, transparent, rgba(47,227,172,0.10) 40%, rgba(93,250,196,0.28) 50%, rgba(47,227,172,0.10) 60%, transparent);
+    animation: scanMove 7s linear infinite;
+    filter:blur(1px);
+  }
+  @keyframes scanMove{
+    0%{ top:-160px; }
+    100%{ top:100vh; }
+  }
+
+  .noise-vignette{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 0%, transparent 40%, rgba(2,4,9,0.75) 100%);
+  }
+
+  /* ================= APP SHELL ================= */
+  .app{
+    position:relative; z-index:1;
+    max-width:1660px; margin:0 auto;
+    padding:22px 26px 40px;
+    display:flex; flex-direction:column; gap:18px;
+    min-height:100vh;
+  }
+
+  /* ---- topbar ---- */
+.topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:linear-gradient(180deg, rgba(13,21,38,0.85), rgba(10,15,28,0.7));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px 24px;
+    backdrop-filter:blur(6px); /* 18px se 6px kar diya for GPU optimization */
+    box-shadow:0 20px 60px -30px rgba(0,0,0,0.7);
+  }
+  .topbar-left{ display:flex; align-items:center; gap:16px; }
+  .icon-btn{
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    border-radius:10px; color:var(--text-dim); cursor:pointer;
+    transition:background .2s, color .2s;
+    background:transparent; border:none;
+  }
+  .icon-btn:hover{ background:rgba(255,255,255,0.06); color:var(--text); }
+  .shield-badge{
+    width:38px; height:38px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(145deg, rgba(47,227,172,0.22), rgba(63,209,255,0.10));
+    border:1px solid var(--line-bright);
+    color:var(--teal-bright);
+    box-shadow:0 0 22px -4px rgba(47,227,172,0.6);
+  }
+  .brand-title{
+    font-size:22px; font-weight:700; letter-spacing:0.2px;
+    background:linear-gradient(90deg,#f2f6ff,#aeb9d6);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .topbar-right{ display:flex; align-items:center; gap:18px; }
+  .tech-lines{
+    width:180px; height:26px; display:none;
+    opacity:0.7;
+  }
+  @media(min-width:900px){ .tech-lines{ display:block; } }
+  .review-btn{
+    position:relative;
+    font-family:var(--font-ui); font-weight:700; letter-spacing:0.6px; font-size:14px;
+    color:#04120c;
+    background:linear-gradient(120deg,#7dffd6,#2fe3ac 60%, #3fd1ff);
+    border:none; padding:13px 26px; border-radius:12px;
+    cursor:pointer;
+    box-shadow:0 0 0 1px rgba(125,255,214,0.4), 0 14px 34px -10px rgba(47,227,172,0.65);
+    transition:transform .18s ease, box-shadow .18s ease;
+    text-transform:uppercase;
+  }
+  .review-btn:hover{ transform:translateY(-2px); box-shadow:0 0 0 1px rgba(125,255,214,0.6), 0 18px 40px -8px rgba(47,227,172,0.85); }
+  .review-btn::after{
+    content:""; position:absolute; inset:-6px; border-radius:16px;
+    border:1px solid rgba(125,255,214,0.35);
+    animation:pulseRing 2.4s ease-out infinite;
+    pointer-events:none;
+  }
+  @keyframes pulseRing{
+    0%{ opacity:0.9; transform:scale(1); }
+    100%{ opacity:0; transform:scale(1.18); }
+  }
+
+  /* ---- main body layout ---- */
+  .body-grid{
+    display:grid;
+    grid-template-columns:78px 250px 1fr 320px;
+    gap:16px;
+    align-items:start;
+    transition: grid-template-columns 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  
+  .body-grid.hide-nav {
+    grid-template-columns: 0px 250px 1fr 320px;
+  }
+
+  @media(max-width:1200px){
+    .body-grid{ grid-template-columns:70px 220px 1fr; }
+    .body-grid.hide-nav { grid-template-columns:0px 220px 1fr; }
+    .chat-panel{ display:none; }
+  }
+
+.panel{
+    background:linear-gradient(180deg, rgba(13,21,38,0.82), rgba(9,13,24,0.78));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    backdrop-filter:blur(6px); /* 16px se 6px kar diya */
+    box-shadow:0 24px 60px -34px rgba(0,0,0,0.8);
+  }
+
+  /* ---- icon rail ---- */
+  .icon-rail{
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    padding:16px 0;
+    transition: opacity 0.3s ease, padding 0.3s ease;
+    overflow: hidden;
+  }
+  
+  .body-grid.hide-nav .icon-rail {
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+  }
+
+  .rail-btn{
+    width:46px; height:46px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-dim); cursor:pointer; position:relative;
+    transition:background .2s, color .2s;
+  }
+  .rail-btn:hover{ color:var(--text); background:rgba(255,255,255,0.05); }
+  .rail-btn.active{
+    color:var(--teal-bright);
+    background:linear-gradient(145deg, rgba(47,227,172,0.18), rgba(63,209,255,0.06));
+  }
+
+  /* ---- sidebar ---- */
+  .sidebar{ 
+    padding:18px 16px; 
+    display:flex; flex-direction:column; gap:16px; 
+    height: 600px; 
+  }
+
+  .new-file-btn{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:12px 10px; border-radius:11px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--line);
+    color:var(--text); font-weight:600; font-size:14px; cursor:pointer;
+    transition:background .2s;
+  }
+  .new-file-btn:hover{ background:rgba(255,255,255,0.08); }
+
+  .recent-label{
+    font-size:12.5px; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--text-faint); margin-top:4px; font-weight:600;
+  }
+  
+  .file-list{ 
+    list-style:none; display:flex; flex-direction:column; gap:2px; 
+    flex: 1; overflow-y: auto;
+  }
+  
+  .file-item{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 8px; border-radius:9px; cursor:pointer;
+    font-size:14px; color:var(--text-dim);
+    transition:background .15s, color .15s;
+    position: relative;
+  }
+  .file-item:hover{ background:rgba(255,255,255,0.05); color:var(--text); }
+  .file-item.active { background:rgba(255,255,255,0.08); color:var(--teal-bright); }
+  
+  .file-dot{
+    width:20px; height:20px; border-radius:5px; flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;
+  }
+  .dot-py{ background:linear-gradient(135deg,#3776ab,#ffd43b); color:#04070d; }
+  .dot-cpp{ background:rgba(255,255,255,0.08); color:var(--text-dim); border:1px solid var(--line); }
+
+  .file-name-text { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  
+  /* Custom File Menu Styles */
+  .delete-btn { background:none; border:none; color:var(--text-faint); cursor:pointer; padding:4px 8px; border-radius:4px; }
+  .delete-btn:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+  .menu { display:none; position:absolute; right:10px; top:35px; background:var(--bg-panel); border:1px solid var(--line); border-radius:8px; padding:5px; z-index:100; box-shadow:0 10px 20px rgba(0,0,0,0.5); }
+  .menu div { padding:8px 12px; font-size:13px; color:var(--text); cursor:pointer; border-radius:4px; }
+  .menu div:hover { background:rgba(255,255,255,0.1); }
+  .delete-chat { color: var(--danger) !important; }
+
+  .logout-btn{
+    margin-top:auto;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    padding:12px; border-radius:11px; cursor:pointer;
+    background:rgba(255,84,112,0.08); border:1px solid rgba(255,84,112,0.25);
+    color:#ff8fa3; font-weight:600; font-size:14px;
+  }
+
+  /* ---- editor column ---- */
+  .editor-col { 
+    display: flex; flex-direction: column; gap: 16px; min-width: 0; 
+    position: relative; overflow: hidden; 
+    height: 600px; 
+  }
+  
+  .editor-panel{ display:flex; flex-direction:column; flex: 1; overflow: hidden; min-width: 0; }
+
+  .tab-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px; border-bottom:1px solid var(--line);
+  }
+  .tab{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--line);
+    padding:8px 14px; border-radius:9px 9px 0 0; font-size:14px; font-weight:500;
+    border-bottom:2px solid var(--teal-bright);
+  }
+  
+  .code-area{
+    flex: 1; 
+    overflow: auto;
+    font-family:var(--font-mono); font-size:15px; line-height:1.9;
+    padding:20px 10px 20px 0; display:flex;
+    background: linear-gradient(180deg, rgba(6,10,19,0.4), rgba(6,10,19,0.4)), var(--bg-editor);
+  }
+
+  .gutter{
+    width:56px; text-align:right; color:var(--text-faint); user-select:none; flex:none;
+    padding-right:16px; border-right: 1px solid var(--line);
+  }
+  .gutter div{ height:1.9em; }
+  .code{ flex:1; white-space:pre; color:#dbe4f5; padding-left: 12px; padding-right: 12px; outline: none; min-height: 100%; min-width: 0; }
+  .code div{ height:1.9em; }
+
+  /* ---- output/report panel ---- */
+  .output-panel { 
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 60%; 
+    z-index: 10;
+    padding: 20px 22px 26px; 
+    transform: translateY(110%); 
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    overflow-y: auto;
+  }
+  .output-panel.show { transform: translateY(0); }
+  
+  .output-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .output-head h2{ font-size:19px; font-weight:700; }
+  .close-x{ color:var(--text-faint); cursor:pointer; }
+  
+#output-content {
+    flex: 1;                     /* Bachi hui saari space cover karega */
+    overflow-y: auto;            /* Vertical scrollbar allow karega */
+    overflow-x: hidden;          /* Horizontal scroll hide karega */
+    padding: 10px;
+    
+    /* Text ko properly wrap karne ke liye */
+    white-space: pre-wrap;       
+    word-wrap: break-word;       
+    word-break: break-word;      
+}  
+  /* Added specific container for text output */
+#output-content::-webkit-scrollbar {
+    width: 8px;
+}
+#output-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+#output-content::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 4px;
+}
+#output-content::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+  .scan-banner{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; margin-bottom:22px; }
+  .scan-title{ display:flex; align-items:center; gap:10px; font-size:16px; font-weight:700; letter-spacing:0.4px; }
+  .vuln-dot{ width:10px; height:10px; border-radius:50%; background:var(--danger); animation:vulnPulse 1.6s ease-out infinite; }
+  @keyframes vulnPulse{ 0%{ box-shadow:0 0 0 0 rgba(255,84,112,0.55); } 70%{ box-shadow:0 0 0 10px rgba(255,84,112,0); } 100%{ box-shadow:0 0 0 0 rgba(255,84,112,0); } }
+  
+  .view-report-btn{
+    background:linear-gradient(120deg,#7dffd6,#2fe3ac); color:#04120c; font-weight:700; font-size:13.5px; letter-spacing:0.3px;
+    border:none; padding:11px 20px; border-radius:10px; cursor:pointer;
+  }
+
+  .charts-row{ display:grid; grid-template-columns:1.5fr 1fr 0.9fr; gap:22px; align-items:center; }
+  .chart-box{ background:rgba(255,255,255,0.02); border:1px solid var(--line); border-radius:12px; padding:14px; }
+
+  /* ---- chat panel ---- */
+  .chat-panel{ display:flex; flex-direction:column; height:600px; }
+  .chat-head{ display:flex; align-items:center; justify-content:space-between; padding:18px 18px 14px; border-bottom:1px solid var(--line); }
+  .chat-messages{ flex:1; padding:18px; overflow-y:auto; scroll-behavior: smooth; }
+  .message{ display:flex; gap:10px; margin-bottom: 14px; flex-direction: column; }
+  .user-message .msg-text { background: linear-gradient(120deg,#2fe3ac,#3fd1ff); color:#04120c; align-self: flex-end; border-radius:14px 14px 4px 14px; padding:14px 16px; max-width:85%; font-weight: 500;}
+  .bot-message .msg-text {
+  background: rgba(63,209,255,0.055);
+  border: 1px solid rgba(63,209,255,0.16);
+  color: #dceaff;
+  border-radius: 4px 14px 14px 14px;
+  padding: 14px 16px;
+  align-self: flex-start;
+  max-width: 85%;
+  line-height: 1.6;
+}
+  .chat-input-wrap{ padding:16px; border-top:1px solid var(--line); position:relative; }
+  .chat-input-box{ display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+  .chat-input-box input{ flex:1; background:none; border:none; outline:none; color:var(--text); font-size:14px; }
+  .send-btn{ background:linear-gradient(120deg,#7dffd6,#2fe3ac); border:none; color:#04120c; font-weight:700; font-size:13px; padding:9px 16px; border-radius:9px; cursor:pointer; }
+  
+  /* Loaders */
+  .loader-container { display: flex; align-items: center; gap: 8px; }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--teal-bright); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+  <!-- Background Elements -->
+  <canvas id="bg-canvas"></canvas>
+  <div class="aurora-field">
+    <div class="aurora-blob blob-1"></div>
+    <div class="aurora-blob blob-2"></div>
+    <div class="aurora-blob blob-3"></div>
+    <div class="aurora-blob blob-4"></div>
+  </div>
+  <div class="grid-plane"></div>
+  <div class="scanline"></div>
+  <div class="noise-vignette"></div>
+
+  <!-- APP LAYOUT -->
+  <div class="app">
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="menu-btn" aria-label="menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div class="shield-badge">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5.2 3.4 9.9 8 11 4.6-1.1 8-5.8 8-11V5l-8-3Z"/><rect x="9" y="11" width="6" height="5" rx="1"/><path d="M12 11V9a1.5 1.5 0 0 1 3 0"/></svg>
+        </div>
+        <span class="brand-title">Code&nbsp;Reviewer</span>
+      </div>
+      <div class="topbar-right">
+        <button class="review-btn" id="reviewBtn">Review Code</button>
+      </div>
+    </header>
+
+    <div class="body-grid" id="main-layout">
+      <!-- Nav Icons -->
+      <nav class="panel icon-rail">
+        <div class="rail-btn active" title="Files">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <div class="rail-btn" id="nav-terminal-btn" title="Toggle Output (Ctrl+J)">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </div>
+      </nav>
+
+      <!-- Sidebar (Files Box) -->
+      <aside class="panel sidebar">
+        <button class="new-file-btn" id="newFileBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New File
+        </button>
+
+        <div class="recent-label">Recent Files</div>
+        
+        <!-- HISTORY LIST -->
+        <ul class="file-list" id="history">
+          <!-- Dynamically added files go here -->
+          <li class="file-item active">
+            <span class="file-dot dot-py">Py</span><span class="file-name-text">Code.py</span>
+          </li>
+        </ul>
+
+        <button class="logout-btn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
+        </button>
+      </aside>
+
+      <!-- Editor Column -->
+      <section class="editor-col">
+        <div class="panel editor-panel">
+          <div class="tab-bar">
+            <div class="tab">
+                <span class="py-badge"></span> <span id="fileName">code.py</span>
+            </div>
+          </div>
+          
+          <div class="code-area">
+            <div class="gutter" id="line-numbers"><div>1</div></div>
+            <div class="code" id="code-editor" contenteditable="true" spellcheck="false" placeholder="Paste your code here..."></div>
+          </div>
+        </div>
+
+        <!-- Terminal Output Panel -->
+        <div class="panel output-panel" id="terminal-output">
+          <div class="output-head">
+            <h2>Output / Report</h2>
+            <span class="close-x" id="close-terminal">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </span>
+          </div>
+
+          <div class="scan-banner">
+            <div class="scan-title"><span class="vuln-dot"></span>CODE ANALYSIS REPORT</div>
+            <button class="view-report-btn" id="downloadReportBtn">Download PDF</button>
+          </div>
+          
+          <!-- This is where AI Review Output will appear -->
+          <div id="output-content">
+             <div class="charts-row" id="dummy-charts">
+                 <!-- Just showing one dummy chart to look nice initially -->
+                 <div class="chart-box" style="width: 100%;">
+                    <svg viewBox="0 0 380 220" style="max-width:300px;"><line x1="34" y1="182" x2="360" y2="182" stroke="var(--line)"/><path fill="none" stroke="#2fe3ac" stroke-width="2.5" d="M34,178 L75,144 L116,166 L157,108 L198,130 L239,58 L280,120 L321,40 L360,20"/></svg>
+                 </div>
+             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chat Panel -->
+      <aside class="panel chat-panel">
+        <div class="chat-head">
+          <h3>Chat with Code</h3>
+        </div>
+
+        <div class="chat-messages" id="Chat-content">
+           <!-- Bot initial message -->
+           <div class="message bot-message">
+               <div class="msg-text">Welcome! I'm ready to review your code. Paste it and let's get started.</div>
+           </div>
+        </div>
+
+        <div class="chat-input-wrap">
+          <div class="chat-input-box">
+            <input type="text" id="chatInput" placeholder="Ask about this code…">
+            <button class="send-btn" id="sendChatBtn">Send</button>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Modals for File Creation & Rename -->
+  <div id="fileModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+    <div class="panel" style="padding:24px; width:340px;">
+      <h3 style="margin-bottom:15px;">New File Name</h3>
+      <input type="text" id="fileInput" style="width:100%; margin-bottom:20px; background:var(--bg-editor); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--font-ui); padding:10px; outline:none;" placeholder="example.py">
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="cancelFile" style="background:none; border:none; color:var(--text-dim); font-weight:600; cursor:pointer;">Cancel</button>
+        <button id="createFile" class="review-btn" style="padding:10px 20px;">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="renameModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+    <div class="panel" style="padding:24px; width:340px;">
+      <h3 style="margin-bottom:15px;">Rename File</h3>
+      <input type="text" id="renameInput" style="width:100%; margin-bottom:20px; background:var(--bg-editor); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--font-ui); padding:10px; outline:none;" placeholder="New name...">
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button id="cancelRename" style="background:none; border:none; color:var(--text-dim); font-weight:600; cursor:pointer;">Cancel</button>
+        <button id="saveRename" class="review-btn" style="padding:10px 20px;">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ===== Extreme animated particle network background =====
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles;
+  const COUNT = 90;
+  const LINK_DIST = 130;
+ 
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+ 
+  function rand(a,b){ return a + Math.random()*(b-a); }
+ 
+  particles = Array.from({length: COUNT}, () => ({
+    x: rand(0,w), y: rand(0,h),
+    vx: rand(-0.25,0.25), vy: rand(-0.25,0.25),
+    r: rand(1,2.4),
+    hue: Math.random() > 0.55 ? '47,227,172' : (Math.random() > 0.5 ? '63,209,255' : '76,124,240')
+  }));
+ 
+  let mouse = {x: -9999, y: -9999};
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  window.addEventListener('mouseleave', () => { mouse.x = -9999; mouse.y = -9999; });
+ 
+  function tick(){
+    ctx.clearRect(0,0,w,h);
+ 
+    for(const p of particles){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < 0 || p.x > w) p.vx *= -1;
+      if(p.y < 0 || p.y > h) p.vy *= -1;
+ 
+      const dx = mouse.x - p.x, dy = mouse.y - p.y;
+      const md = Math.sqrt(dx*dx + dy*dy);
+      if(md < 160){
+        p.x -= dx * 0.0028;
+        p.y -= dy * 0.0028;
+      }
+    }
+ 
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const a = particles[i], b = particles[j];
+        const dx = a.x-b.x, dy = a.y-b.y;
+        const dist = Math.sqrt(dx*dx+dy*dy);
+        if(dist < LINK_DIST){
+          const op = (1 - dist/LINK_DIST) * 0.35;
+          ctx.strokeStyle = `rgba(${a.hue},${op})`;
+          ctx.lineWidth = 0.7;
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.stroke();
+        }
+      }
+    }
+ 
+    for(const p of particles){
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${p.hue},0.9)`;
+      ctx.shadowColor = `rgba(${p.hue},0.9)`;
+      ctx.shadowBlur = 8;
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+ 
+    requestAnimationFrame(tick);
+  }
+  tick();
+</script>
+
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
