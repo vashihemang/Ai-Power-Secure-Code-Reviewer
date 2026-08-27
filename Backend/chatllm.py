@@ -1,16 +1,44 @@
 from pydantic import BaseModel
 from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_chroma import Chroma # FAISS ki jagah Chroma import kiya hai
+from langchain_chroma import Chroma 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 
 class ChatResponse(BaseModel):
     explanation: str
 
 # LLM & EMBEDDINGS SETUP (Optimized for speed)
 
-llm = ChatOllama(model="llama3.2:latest", temperature=0.0, num_predict=250, num_ctx=4096, keep_alive="15m")
-embeddings = OllamaEmbeddings(model="qwen3-embedding:0.6b") 
+primary_llm = ChatOpenAI(
+    model="google/gemma-4-26b-a4b-it:freeze-2024-06-11", 
+    api_key= os.getenv("API_KEY"),
+    base_url="https://openrouter.ai/api/v1",
+    temperature=0.0,
+    max_tokens=250
+)
+
+# 2. Fallback LLM (Local Ollama)
+fallback_llm = ChatOllama(
+    model="llama3.2:latest", 
+    temperature=0.0, 
+    num_predict=250, 
+    num_ctx=4096, 
+    keep_alive="15m"
+)
+
+# 3. Combine using LangChain Fallbacks
+# Agar primary_llm fail hota hai, toh request automatically fallback_llm ke paas jayegi
+llm = primary_llm.with_fallbacks([fallback_llm])
+
+# Embeddings (Local)
+embeddings = OllamaEmbeddings(model="qwen3-embedding:0.6b")
+
 
 last_seen_code = ""
 vector_store = None # Vector database (ChromaDB)
@@ -66,10 +94,11 @@ Review button top-right generates the report.
 Download button bottom-right downloads it.
  
 GREETING:
-For greetings, greet in the user's language/style and say you are
-their AI Code Security Reviewer.
+ONLY apply this rule when the user explicitly greets you (e.g., "Hi", "Hello") or asks if you are ready.
+For greetings, greet in the user's language/style and say you are their AI Code Security Reviewer.
 If code is loaded, say you have read it and they can ask questions.
 If no code is loaded, ask them to provide/open the code.
+DO NOT append this greeting or acknowledgment to normal questions, explanations, or code analysis.
  
 IDENTITY:
 You are an AI Code Reviewer & Security Assistant focused on
@@ -141,13 +170,14 @@ def Code_ChatBot(incoming_query, incoming_code):
 
     try:
         print("Analyzing code for chat ...")
+        
         response = llm.invoke(messages)
+        
         text = (response.content or "").strip()
-        print("Message Send complited.")
+        print("Message Send completed.")
         return ChatResponse(explanation=text).model_dump()
+        
     except Exception as e:
         print(f"Error: {e}")
         return {"explanation": "An error occurred while analyzing the code."}
-
-
 
