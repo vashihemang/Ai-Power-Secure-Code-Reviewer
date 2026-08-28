@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, render_template, request, jsonify,stream_with_context,Response
+from Backend.llm import Detecter_llm
 from Backend.chatllm import Code_ChatBot
 
 
@@ -33,6 +34,26 @@ def chat_with_code():
         return jsonify({"reply": "An error occurred while processing your request."}),500
 
 
+
+
+@app.route('/detect_code', methods=['POST'])
+def detect_code():
+    data = request.json
+    user_code = data.get('code', '')
+    
+    if not user_code.strip():
+        return jsonify({"status": "error", "message": "Code is empty"}), 400
+    
+    def generate():
+        try:
+            # Model ke chunks ko directly frontend par yield karein
+            for chunk in Detecter_llm(user_code):
+                yield chunk
+        except Exception as e:
+            yield f"\n[Error: {str(e)}]"
+
+    # text/plain stream ke roop me response bhejein
+    return Response(stream_with_context(generate()), mimetype='text/plain')
 
 
 
