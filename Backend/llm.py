@@ -4,11 +4,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# ==========================================
-# 1. LLM SETUP (With Fallbacks)
-# ==========================================
 
-# 1. Primary LLM (OpenRouter API)
+# LM SETUP (With Fallbacks)
+# 1. Primary LLM
 primary_llm = ChatOpenAI(
     model="google/gemma-4-26b-a4b-it:freeze-2024-06-11", 
     api_key=os.getenv("API_KEY"),
@@ -31,9 +29,7 @@ fallback_llm = ChatOllama(
 robust_llm = primary_llm.with_fallbacks([fallback_llm])
 
 
-# ==========================================
 # 2. CODE REVIEWER FUNCTION
-# ==========================================
 
 def Detecter_llm(user_code: str):
     # 1. System Prompt Template Define Karein
