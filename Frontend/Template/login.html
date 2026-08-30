@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Powered Secure Code Reviewer — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #040c11;
+      --teal: #2ce8c9;
+      --teal-bright: #8dfff0;
+      --cyan: #38e1ff;
+      --text: #eaf6f8;
+      --text-dim: #8fb3b8;
+      --text-faint: #4c6f76;
+      --font-display: 'Orbitron', sans-serif;
+      --font-ui: 'Rajdhani', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%
+    }
+
+    body {
+      background: radial-gradient(ellipse 120% 90% at 50% 0%, #0a2530 0%, #041016 45%, var(--bg-deep) 100%);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%
+    }
+
+    .glow-core {
+      position: fixed;
+      top: -10%;
+      left: 50%;
+      transform: translate3d(-50%, 0, 0);
+      width: 900px;
+      height: 900px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(44, 232, 201, .22), transparent 65%);
+      z-index: 0;
+      pointer-events: none;
+      animation: coreBreathe 6s ease-in-out infinite
+    }
+
+    @keyframes coreBreathe {
+
+      0%,
+      100% {
+        opacity: .7;
+        transform: translate3d(-50%, 0, 0) scale(1)
+      }
+
+      50% {
+        opacity: 1;
+        transform: translate3d(-50%, 0, 0) scale(1.08)
+      }
+    }
+
+    .aurora-blob {
+      position: fixed;
+      border-radius: 50%;
+      opacity: .5;
+      z-index: 0;
+      pointer-events: none;
+      mix-blend-mode: screen
+    }
+
+    .blob-a {
+      width: 560px;
+      height: 560px;
+      left: -14%;
+      bottom: -16%;
+      background: radial-gradient(circle, rgba(56, 225, 255, .35), transparent 70%);
+      animation: driftA 24s ease-in-out infinite
+    }
+
+    .blob-b {
+      width: 520px;
+      height: 520px;
+      right: -14%;
+      top: 6%;
+      background: radial-gradient(circle, rgba(44, 232, 201, .32), transparent 70%);
+      animation: driftB 28s ease-in-out infinite
+    }
+
+    @keyframes driftA {
+
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1)
+      }
+
+      50% {
+        transform: translate3d(60px, -40px, 0) scale(1.15)
+      }
+    }
+
+    @keyframes driftB {
+
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1)
+      }
+
+      50% {
+        transform: translate3d(-50px, 40px, 0) scale(1.1)
+      }
+    }
+
+    .grid-plane {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(44, 232, 201, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(44, 232, 201, .07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 80%);
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 20%, transparent 80%);
+      animation: gridPan 46s linear infinite
+    }
+
+    @keyframes gridPan {
+      0% {
+        background-position: 0 0, 0 0
+      }
+
+      100% {
+        background-position: 480px 0, 0 480px
+      }
+    }
+
+    .scanline {
+      position: fixed;
+      left: 0;
+      right: 0;
+      height: 120px;
+      z-index: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, transparent, rgba(56, 225, 255, .10) 40%, rgba(141, 255, 240, .25) 50%, rgba(56, 225, 255, .10) 60%, transparent);
+      animation: scanMove 6s linear infinite
+    }
+
+    @keyframes scanMove {
+      0% {
+        top: -140px
+      }
+
+      100% {
+        top: 100vh
+      }
+    }
+
+    .poly-deco {
+      position: fixed;
+      z-index: 0;
+      pointer-events: none;
+      opacity: .5
+    }
+
+    .poly-tl {
+      top: 0;
+      left: 0;
+      width: 340px;
+      height: 340px
+    }
+
+    .poly-br {
+      bottom: 0;
+      right: 0;
+      width: 380px;
+      height: 380px
+    }
+
+    .vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(2, 6, 9, .65) 100%)
+    }
+
+    .stage {
+      position: relative;
+      z-index: 2;
+      padding: 30px;
+      width: 100%;
+      display: flex;
+      justify-content: center
+    }
+
+    .login-card {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      background: linear-gradient(180deg, rgba(6, 26, 30, .82), rgba(3, 14, 17, .9));
+      border: 1px solid rgba(56, 225, 255, .35);
+      border-radius: 20px;
+      padding: 44px 40px 36px;
+      box-shadow: 0 0 0 1px rgba(56, 225, 255, .08), 0 0 60px -10px rgba(44, 232, 201, .35), 0 40px 90px -30px rgba(0, 0, 0, .85);
+      backdrop-filter: blur(4px);
+      overflow: hidden
+    }
+
+    .login-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(141, 255, 240, .5), transparent 30%, transparent 70%, rgba(56, 225, 255, .4));
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none
+    }
+
+    .corner-mark {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-color: rgba(141, 255, 240, .85);
+      pointer-events: none
+    }
+
+    .corner-mark.tl {
+      top: 10px;
+      left: 10px;
+      border-top: 2px solid;
+      border-left: 2px solid;
+      border-radius: 4px 0 0 0
+    }
+
+    .corner-mark.tr {
+      top: 10px;
+      right: 10px;
+      border-top: 2px solid;
+      border-right: 2px solid;
+      border-radius: 0 4px 0 0
+    }
+
+    .corner-mark.bl {
+      bottom: 10px;
+      left: 10px;
+      border-bottom: 2px solid;
+      border-left: 2px solid;
+      border-radius: 0 0 0 4px
+    }
+
+    .corner-mark.br {
+      bottom: 10px;
+      right: 10px;
+      border-bottom: 2px solid;
+      border-right: 2px solid;
+      border-radius: 0 0 4px 0
+    }
+
+    .tech-deco {
+      position: absolute;
+      top: 56px;
+      right: -6px;
+      width: 160px;
+      height: 70px;
+      opacity: .85;
+      pointer-events: none
+    }
+
+    .shield-wrap {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 18px;
+      height: 132px
+    }
+
+    .shield-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 150px;
+      height: 150px;
+      margin: -75px 0 0 -75px;
+      border: 1px solid rgba(56, 225, 255, .25);
+      border-radius: 50%;
+      animation: spinSlow 18s linear infinite
+    }
+
+    .shield-ring.r2 {
+      width: 118px;
+      height: 118px;
+      margin: -59px 0 0 -59px;
+      border-style: dashed;
+      border-color: rgba(44, 232, 201, .3);
+      animation: spinSlow 12s linear infinite reverse
+    }
+
+    @keyframes spinSlow {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .shield-glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 130px;
+      height: 130px;
+      margin: -65px 0 0 -65px;
+      background: radial-gradient(circle, rgba(44, 232, 201, .4), transparent 70%);
+      animation: coreBreathe 3.2s ease-in-out infinite
+    }
+
+    .shield-icon {
+      position: relative;
+      width: 92px;
+      height: 92px;
+      filter: drop-shadow(0 0 14px rgba(56, 225, 255, .75))
+    }
+
+    .eyebrow {
+      text-align: center;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 12.5px;
+      letter-spacing: 5px;
+      color: var(--teal-bright);
+      text-shadow: 0 0 12px rgba(44, 232, 201, .7);
+      margin-bottom: 6px
+    }
+
+    .headline {
+      text-align: center;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 27px;
+      letter-spacing: 3px;
+      background: linear-gradient(180deg, #fff, #a9d9de 65%, #6fb9c2);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 26px rgba(56, 225, 255, .35);
+      margin-bottom: 34px
+    }
+
+    #message-box {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 20px;
+      margin-bottom: 14px;
+      letter-spacing: 1px
+    }
+
+    .field {
+      position: relative;
+      margin-bottom: 20px
+    }
+
+    .field-shape {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 22px 14px 18px;
+      background: rgba(8, 28, 32, .55);
+      border: 1px solid rgba(56, 225, 255, .4);
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%);
+      transition: border-color .2s, box-shadow .2s
+    }
+
+    .field-shape:focus-within {
+      border-color: var(--teal-bright);
+      box-shadow: 0 0 22px -4px rgba(44, 232, 201, .7), inset 0 0 12px -6px rgba(44, 232, 201, .5)
+    }
+
+    .field-shape svg {
+      color: var(--teal-bright);
+      flex: none;
+      opacity: .9
+    }
+
+    .field-shape input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 2px;
+      text-transform: uppercase
+    }
+
+    .field-shape input::placeholder {
+      color: var(--text-faint);
+      letter-spacing: 2px
+    }
+
+    .login-btn-wrap {
+      position: relative;
+      margin-top: 30px
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 16px 0;
+      background: linear-gradient(135deg, rgba(44, 232, 201, .16), rgba(56, 225, 255, .10));
+      border: 1.5px solid var(--teal-bright);
+      clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+      color: #eafffb;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: 6px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 30px -6px rgba(44, 232, 201, .75), inset 0 0 20px -8px rgba(141, 255, 240, .5);
+      transition: transform .15s ease
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px)
+    }
+
+    .login-btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -60%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .55), transparent);
+      animation: shine 3s ease-in-out infinite
+    }
+
+    @keyframes shine {
+      0% {
+        left: -60%
+      }
+
+      45%,
+      100% {
+        left: 130%
+      }
+    }
+
+    .btn-bracket {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-color: var(--teal-bright);
+      pointer-events: none
+    }
+
+    .btn-bracket.bl {
+      left: -8px;
+      bottom: -8px;
+      border-left: 2px solid;
+      border-bottom: 2px solid
+    }
+
+    .btn-bracket.tr {
+      right: -8px;
+      top: -8px;
+      border-right: 2px solid;
+      border-top: 2px solid
+    }
+
+    .links-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 22px;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: .4px
+    }
+
+    .links-row a {
+      color: #7fd6ff;
+      text-decoration: none;
+      transition: color .2s, text-shadow .2s;
+      cursor: pointer
+    }
+
+    .links-row a:hover {
+      color: var(--teal-bright);
+      text-shadow: 0 0 8px rgba(141, 255, 240, .8)
+    }
+
+    .links-row .sep {
+      color: var(--text-faint)
+    }
+
+    #page-loader {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 12, 17, .85);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--teal-bright);
+      font-family: var(--font-display);
+      letter-spacing: 4px;
+      font-size: 18px;
+      font-weight: 700
+    }
+
+    .loader-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid rgba(56, 225, 255, .2);
+      border-top-color: var(--teal-bright);
+      border-radius: 50%;
+      animation: spinSlow 1s linear infinite;
+      margin-bottom: 20px
+    }
+
+    @media(max-width:480px) {
+      .login-card {
+        backdrop-filter: blur(3px)
+      }
+
+      .headline {
+        font-size: 22px;
+        letter-spacing: 2px
+      }
+    }
+
+    @media(prefers-reduced-motion:reduce) {
+
+      .glow-core,
+      .aurora-blob,
+      .grid-plane,
+      .scanline,
+      .shield-ring,
+      .shield-glow,
+      .login-btn::after {
+        animation: none !important
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="page-loader">
+    <div class="loader-spinner"></div>AUTHENTICATING...
+  </div>
+
+  <canvas id="bg-canvas"></canvas>
+  <div class="glow-core"></div>
+  <div class="aurora-blob blob-a"></div>
+  <div class="aurora-blob blob-b"></div>
+  <div class="grid-plane"></div>
+  <div class="scanline"></div>
+
+  <svg class="poly-deco poly-tl" viewBox="0 0 340 340" fill="none">
+    <polygon points="0,0 130,0 60,70 0,90" stroke="rgba(56,225,255,0.35)" stroke-width="1" />
+    <polygon points="130,0 220,0 150,110 60,70" stroke="rgba(44,232,201,0.28)" stroke-width="1" />
+    <polygon points="0,90 60,70 40,170 0,190" stroke="rgba(56,225,255,0.2)" stroke-width="1" />
+    <polygon points="150,110 220,0 300,60 210,150" stroke="rgba(44,232,201,0.22)" stroke-width="1" />
+  </svg>
+  <svg class="poly-deco poly-br" viewBox="0 0 380 380" fill="none">
+    <polygon points="380,380 250,380 320,300 380,280" stroke="rgba(56,225,255,0.35)" stroke-width="1" />
+    <polygon points="250,380 160,380 230,260 320,300" stroke="rgba(44,232,201,0.28)" stroke-width="1" />
+    <polygon points="380,280 320,300 340,200 380,180" stroke="rgba(56,225,255,0.2)" stroke-width="1" />
+    <polygon points="230,260 160,380 90,320 180,230" stroke="rgba(44,232,201,0.22)" stroke-width="1" />
+  </svg>
+
+  <div class="vignette"></div>
+
+  <div class="stage">
+    <div class="login-card">
+      <span class="corner-mark tl"></span>
+      <span class="corner-mark tr"></span>
+      <span class="corner-mark bl"></span>
+      <span class="corner-mark br"></span>
+
+      <svg class="tech-deco" viewBox="0 0 160 70" fill="none">
+        <path d="M0 40 H60 L74 20 H160" stroke="rgba(56,225,255,0.55)" stroke-width="1.2" />
+        <path d="M0 55 H36 L48 62 H160" stroke="rgba(44,232,201,0.4)" stroke-width="1" />
+        <circle cx="60" cy="40" r="2.3" fill="#8dfff0" />
+        <circle cx="140" cy="20" r="1.6" fill="#8dfff0" opacity="0.7" />
+        <text x="90" y="16" font-family="JetBrains Mono" font-size="7" fill="rgba(141,255,240,0.55)">01001</text>
+        <text x="118" y="32" font-family="JetBrains Mono" font-size="7" fill="rgba(141,255,240,0.4)">1100</text>
+      </svg>
+
+      <div class="shield-wrap">
+        <div class="shield-glow"></div>
+        <div class="shield-ring"></div>
+        <div class="shield-ring r2"></div>
+        <svg class="shield-icon" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <linearGradient id="shieldGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#8dfff0" />
+              <stop offset="1" stop-color="#38e1ff" />
+            </linearGradient>
+          </defs>
+          <path d="M50 6 L86 20 V46 C86 68 71 84 50 94 C29 84 14 68 14 46 V20 Z" stroke="url(#shieldGrad)"
+            stroke-width="3" fill="rgba(44,232,201,0.06)" stroke-linejoin="round" />
+          <path d="M50 16 L78 26 V46 C78 64 66 76 50 84 C34 76 22 64 22 46 V26 Z" stroke="rgba(141,255,240,0.35)"
+            stroke-width="1" fill="none" />
+          <circle cx="50" cy="46" r="9" stroke="url(#shieldGrad)" stroke-width="3" fill="rgba(44,232,201,0.15)" />
+          <rect x="46" y="52" width="8" height="14" rx="2" stroke="url(#shieldGrad)" stroke-width="3"
+            fill="rgba(44,232,201,0.15)" />
+        </svg>
+      </div>
+
+      <div class="eyebrow">AI POWERED SECURE</div>
+      <div class="headline">CODE REVIEWER</div>
+
+      <div id="message-box"></div>
+
+      <div id="login-form">
+        <form onsubmit="return false;">
+          <div class="field">
+            <div class="field-shape">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+              </svg>
+              <input type="text" id="login-username" placeholder="USERNAME">
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-shape">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+              <input type="password" id="login-password" placeholder="PASSWORD">
+            </div>
+          </div>
+          <div class="login-btn-wrap">
+            <button class="login-btn" type="button" onclick="submitAuth('login')">LOGIN</button>
+            <span class="btn-bracket bl"></span>
+            <span class="btn-bracket tr"></span>
+          </div>
+        </form>
+        <div class="links-row">
+          <span class="sep">|</span>
+          <a onclick="toggleForms()">Create Account</a>
+          <span class="sep">|</span>
+        </div>
+      </div>
+
+      <div id="register-form" style="display:none;">
+        <form onsubmit="return false;">
+          <div class="field">
+            <div class="field-shape">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" />
+              </svg>
+              <input type="text" id="reg-username" placeholder="NEW USERNAME">
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-shape">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+              <input type="password" id="reg-password" placeholder="NEW PASSWORD">
+            </div>
+          </div>
+          <div class="login-btn-wrap">
+            <button class="login-btn" type="button" onclick="submitAuth('register')">REGISTER</button>
+            <span class="btn-bracket bl"></span>
+            <span class="btn-bracket tr"></span>
+          </div>
+        </form>
+        <div class="links-row">
+          <a onclick="toggleForms()">Back to Login</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let w, h;
+      const COUNT = 25, LINK_DIST = 90, LINK_DIST_SQ = LINK_DIST * LINK_DIST;
+      const FRAME_TIME = 1000 / 15;
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const rand = (a, b) => a + Math.random() * (b - a);
+
+      function resize() { w = canvas.width = innerWidth; h = canvas.height = innerHeight; }
+      addEventListener('resize', resize);
+      resize();
+
+      const particles = Array.from({ length: COUNT }, () => ({
+        x: rand(0, w), y: rand(0, h), vx: rand(-.2, .2), vy: rand(-.2, .2),
+        r: rand(.8, 2.2), tw: Math.random() * Math.PI * 2,
+        hue: Math.random() > .5 ? '56,225,255' : '44,232,201'
+      }));
+
+      const mouse = { x: -9999, y: -9999 };
+      addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+      addEventListener('mouseleave', () => { mouse.x = mouse.y = -9999; });
+
+      let last = 0;
+      function frame(t) {
+        requestAnimationFrame(frame);
+        if (t - last < FRAME_TIME) return;
+        last = t;
+        ctx.clearRect(0, 0, w, h);
+
+        for (const p of particles) {
+          p.x += p.vx; p.y += p.vy;
+          if (!reduced) p.tw += 0.02;
+          if (p.x < 0 || p.x > w) p.vx *= -1;
+          if (p.y < 0 || p.y > h) p.vy *= -1;
+          const dx = mouse.x - p.x, dy = mouse.y - p.y, dSq = dx * dx + dy * dy;
+          if (dSq < 22500) { p.x -= dx * 0.003; p.y -= dy * 0.003; }
+        }
+
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const a = particles[i], b = particles[j];
+            const dx = a.x - b.x, dy = a.y - b.y, dSq = dx * dx + dy * dy;
+            if (dSq < LINK_DIST_SQ) {
+              const op = (1 - Math.sqrt(dSq) / LINK_DIST) * 0.3;
+              ctx.strokeStyle = `rgba(${a.hue},${op})`;
+              ctx.lineWidth = 0.6;
+              ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+            }
+          }
+        }
+
+        for (const p of particles) {
+          const alpha = reduced ? 0.65 : 0.5 + Math.sin(p.tw) * 0.5;
+          const op = 0.4 + alpha * 0.6;
+          ctx.beginPath(); ctx.fillStyle = `rgba(${p.hue},${op})`;
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.fillStyle = `rgba(${p.hue},${op * 0.25})`;
+          ctx.arc(p.x, p.y, p.r * 2.8, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      requestAnimationFrame(frame);
+    })();
+  </script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>
