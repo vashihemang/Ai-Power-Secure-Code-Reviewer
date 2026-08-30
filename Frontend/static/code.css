@@ -1,0 +1,593 @@
+body {
+    margin: 0;
+    background: #1e1e1e;
+    color: #fff;
+    font-family: Segoe UI, sans-serif;
+    overflow: hidden;
+}
+
+/* Navbar */
+.navbar {
+    height: 55px;
+    background: #202124;
+    border-bottom: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+}
+
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#menuBtn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 5px;
+}
+
+#menuBtn:hover {
+    background: #333;
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+.nav-right button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.nav-right button:hover {
+    background: #45a049;
+}
+
+
+
+/* Sidebar */
+.sidebar {
+    width: 210px;
+    background: #252526;
+    border-right: 1px solid #333;
+    transition: width 0.3s, padding 0.3s;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    position: relative; /* 🟢 REQUIRED: Keeps the logout button locked inside the sidebar */
+}
+
+
+
+.sidebar-header {
+    padding: 0 15px 15px 15px;
+    border-bottom: 1px solid #333;
+}
+
+/* NEW FILE BUTTON (Matched with Nav Button) */
+#newFileBtn {
+    width: 100%;
+    padding: 8px 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+
+#newFileBtn:hover {
+    background: #45a049;
+}
+
+.sidebar.closed {
+    width: 0;
+    padding: 0;
+    border-right: none;
+    overflow: hidden;
+}
+
+/* Gemini-style History List */
+.history-title {
+    padding: 15px 15px 5px 15px;
+    font-size: 13px;
+    color: #aaa;
+    font-weight: 600;
+}
+
+#history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    margin-bottom: 60px; /* 🟢 REQUIRED: Stops file names from hiding behind the logout button */
+}
+
+/* =========================================
+   LOGOUT BUTTON STYLES
+   ========================================= */
+.logout-container {
+    position: absolute;
+    bottom: 20px;
+    left: 15px;
+    right: 15px;
+}
+
+#logoutBtn {
+    width: 100%;
+    padding: 10px;
+    background-color: #e74c3c; /* Red color */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* Space between icon and text */
+}
+
+#logoutBtn:hover {
+    background-color: #c0392b; /* Darker red on hover */
+}
+
+.chat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 5px;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.chat-item:hover {
+    background: #37373d;
+}
+
+.chat-item.active {
+    background: #37373d;
+    border-left: 3px solid #4CAF50;
+}
+
+.chat-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 150px;
+    font-size: 14px;
+}
+
+/* 3 Dots Menu Button */
+.delete-btn {
+    background: transparent;
+    border: none;
+    color: #aaa;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 0 5px;
+}
+
+.delete-btn:hover {
+    color: white;
+    background: #555;
+}
+
+/* Dropdown Menu (Rename/Delete) */
+.menu {
+    display: none;
+    position: absolute;
+    right: 15px;
+    top: 35px;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 5px;
+    z-index: 100;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.menu div {
+    padding: 10px 20px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #ccc;
+}
+
+.menu div:hover {
+    background: #333;
+    color: white;
+}
+
+/* Editor Area */
+.editor {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: #1e1e1e;
+}
+
+.editor-tabs {
+    display: flex;
+    background: #252526;
+    border-bottom: 1px solid #333;
+}
+
+.tab {
+    padding: 10px 15px;
+    background: #1e1e1e;
+    border-right: 1px solid #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 2px solid #4CAF50;
+}
+
+#monaco {
+    width: 100%;
+    flex: 1;
+    /* Removed padding to fix Monaco rendering issues */
+    color: #888;
+}
+
+/* Output Panel */
+.output {
+    width: 500px;
+    background: #1b1b1b;
+    border-left: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s;
+}
+
+.output-header {
+    padding: 12px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    background: #252526;
+}
+
+#output-content {
+    flex: 1;
+    padding: 15px;
+    overflow: auto;
+    font-family: Consolas, monospace;
+    white-space: pre-wrap;
+    color: #ccc;
+}
+
+.output.closed {
+    width: 0;
+    overflow: hidden;
+    border-left: none;
+}
+
+
+/* Container me position: relative add karein (Line ~55) */
+.container {
+    display: flex;
+    height: calc(100vh - 55px);
+    position: relative; /* Yeh zaroori hai over-lap ke liye */
+}
+
+/* Chat Button Style (Match with newFileBtn) */
+#chatBtn {
+    width: 100%;
+    padding: 8px 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+#chatBtn:hover {
+    background: #45a049;
+}
+
+/* New Chat Panel Style */
+.Chat {
+    position: absolute; /* Sidebar ke upar aane ke liye */
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 500px; /* Chat window ki cha चौड़ाई */
+    background: #1b1b1b;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    z-index: 1000; /* Sidebar se upar rakhne ke liye */
+    overflow: hidden;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.5); /* Shadow effect */
+}
+
+.Chat.closed {
+    width: 0;
+    border-right: none;
+    box-shadow: none;
+}
+
+.Chat-header {
+    padding: 12px;
+    font-weight: bold;
+    border-bottom: 1px solid #333;
+    background: #252526;
+    color: #fff;
+    min-width: 400px; /* Taki text wrap na ho close hote waqt */
+}
+
+/* Chat Messages Area Container */
+#Chat-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Messages ke beech ka gap */
+    min-width: 400px;
+    background: #1e1e1e;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Base Message Style */
+.message {
+    display: flex;
+    width: 100%;
+}
+
+.msg-text {
+    max-width: 85%;
+    width: fit-content; /* 🟢 YEH LINE ADD KAREIN: Isse width sirf text jitni rahegi */
+    padding: 8px 14px; /* Padding thodi adjust ki gayi hai */
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+/* Bot (LLM) Message - Left Side */
+.bot-message {
+    justify-content: flex-start;
+}
+.bot-message .msg-text {
+    background: #333;
+    color: #eee;
+    border-bottom-left-radius: 2px; /* Chat bubble effect */
+}
+
+/* User Message - Right Side */
+.user-message {
+    justify-content: flex-end;
+}
+.user-message .msg-text {
+    background: #4CAF50; /* User msg in green */
+    color: white;
+    border-bottom-right-radius: 2px;
+}
+
+/* Chat Input Area (Bottom) */
+.chat-input-area {
+    display: flex;
+    padding: 12px;
+    background: #252526;
+    border-top: 1px solid #333;
+    min-width: 400px;
+}
+
+#chatInput {
+    flex: 1;
+    padding: 10px;
+    background: #1e1e1e;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 4px;
+    outline: none;
+    font-size: 14px;
+}
+
+#chatInput:focus {
+    border-color: #4CAF50;
+}
+
+#sendChatBtn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 0 15px;
+    margin-left: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+}
+
+#sendChatBtn:hover {
+    background: #45a049;
+}
+
+
+
+#downloadReportBtn {
+    width: 100%;
+    padding: 8px 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: background 0.2s;
+    
+}
+
+#downloadReportBtn:hover {
+    background: #45a049;
+}
+
+
+
+
+/* Modals (New File & Rename) */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-box {
+    background: #252526;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    width: 300px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.modal-box h3 {
+    margin-top: 0;
+    color: white;
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+
+.modal-box input {
+    width: 90%;
+    padding: 10px;
+    background: #1e1e1e;
+    border: 1px solid #555;
+    color: white;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    outline: none;
+}
+
+.modal-box input:focus {
+    border-color: #4CAF50;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-buttons button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-green {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-green:hover {
+    background: #45a049;
+}
+
+.btn-gray {
+    background: #555;
+    color: white;
+}
+
+.btn-gray:hover {
+    background: #666;
+}
+
+
+
+
+
+/* Circle Spinner */
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid #4CAF50; /* Green color */
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Container for text so box doesn't jump when dots animate */
+.dots-loader {
+    display: inline-block;
+    min-width: 65px; /* Box ki width ko fix rakhne ke liye */
+    text-align: left;
+}
+
+/* Blinking Dots (. . .) - (Yeh pehle se aapke paas hai) */
+.dots-loader::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '. .'; }
+    80%, 100% { content: '. . .'; }
+}
+
+/* Loader Container for Chat & Output */
+.loader-container {
+    display: inline-flex; /* 🟢 flex ki jagah inline-flex use karein */
+    align-items: center;
+    color: #4CAF50;
+    font-weight: bold;
+    gap: 8px; /* Spinner aur text ke beech ka gap */
+    margin: 0;
+}
+
+
+
+
+
+
+
+
