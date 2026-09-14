@@ -231,6 +231,14 @@ Example:
 ollama run llama3.2
 ```
 
+```bash
+ollama run qwen2.5-coder
+```
+
+```bash
+ollama run qwen3-embedding:0.6b
+```
+
 You can replace the model with another Ollama-supported model according to your system resources.
 
 ### Cloud LLM
