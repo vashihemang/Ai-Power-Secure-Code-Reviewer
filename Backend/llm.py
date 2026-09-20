@@ -3,22 +3,39 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_google_genai import ChatGoogleGenerativeAI
+from dotenv import load_dotenv
 
+load_dotenv()
+# ==========================================
+# 1. LLM SETUP (With Fallbacks)
+# ==========================================
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# LM SETUP (With Fallbacks)
-# 1. Primary LLM
-primary_llm = ChatOpenAI(
-    model="google/gemma-4-26b-a4b-it:freeze-2024-06-11", 
-    api_key=os.getenv("API_KEY"),
+# 2. Primary LLM (OpenRouter API)
+gemini_model = "gemini-3.7-flash"
+primary_llm = ChatGoogleGenerativeAI(
+    model=gemini_model,
+    google_api_key=GEMINI_API_KEY,
+    temperature=0.0,
+)
+model_name = "google/gemma-4-26b-a4b-it:freeze-2024-06-11"
+fallback_gemini= ChatOpenAI(
+    model=model_name, 
+    api_key=OPENROUTER_API_KEY,
     base_url="https://openrouter.ai/api/v1",
     temperature=0.0,
     max_tokens=2500 
 )
 
+# 3. Fallback LLM (Google Gemini)
+
+model_name2 = "qwen2.5-coder:7b"
 # 2. Fallback LLM (Local Ollama - Qwen2.5-coder)
 # Agar API fail hoti hai toh ye local model automatically chal jayega
 fallback_llm = ChatOllama(
-    model="qwen2.5-coder:7b", 
+    model=model_name2, 
     temperature=0.0, 
     num_predict=2500, 
     num_ctx=4096, 
@@ -26,10 +43,12 @@ fallback_llm = ChatOllama(
 )
 
 # 3. Combine both LLMs using LangChain Fallbacks
-robust_llm = primary_llm.with_fallbacks([fallback_llm])
+robust_llm = primary_llm.with_fallbacks([fallback_llm,fallback_llm])
 
-
+  
+# ==========================================
 # 2. CODE REVIEWER FUNCTION
+# ==========================================
 
 def Detecter_llm(user_code: str):
     # 1. System Prompt Template Define Karein
@@ -79,6 +98,7 @@ def Detecter_llm(user_code: str):
 
     # 4. Chain ko invoke karein aur output stream karein
     print("Detecting code... Please wait ⏳")
+  
     for chunk in chain.stream({"code": user_code}):
         yield chunk
     
